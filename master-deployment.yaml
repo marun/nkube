@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nestedkube-master
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nestedkube-master
+    spec:
+      containers:
+        - name: nestedkube-master
+          image: maru/nestedkube
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: image-cache
+            mountPath: /tmp/nestedkube/images
+      volumes:
+        - name: image-cache
+          hostPath:
+            path: /tmp/nestedkube/images
