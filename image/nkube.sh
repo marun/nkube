@@ -15,7 +15,8 @@ set -o pipefail
 # TODO configure network plugin
 function init-master() {
   if [[ -f "/etc/kubernetes/admin.conf" ]]; then
-    return
+    echo "Already initialized"
+    return 0
   fi
 
   local sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
@@ -44,6 +45,11 @@ function get-kubeadm-token() {
 }
 
 function init-node() {
+  if [[ -f "/etc/kubernetes/kubelet.conf" ]]; then
+    echo "Already initialized"
+    return 0
+  fi
+
   local token; token="$(get-kubeadm-token)"
   local sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
   local namespace; namespace="$(cat ${sa_dir}/namespace)"
@@ -51,8 +57,9 @@ function init-node() {
   local dns_name="${cluster_id}.${namespace}.svc.cluster.local"
   local ip_addr; ip_addr="$(getent hosts "${dns_name}" | awk '{print $1}')"
 
-  # TODO this is broken atm.  latest kubeadm makes things worse, not better
-  kubeadm join --token="${token}" "${ip_addr}"
+  while ! kubeadm join --token="${token}" "${ip_addr}"; do
+    sleep 1
+  done
 }
 
 if [[ -f "/etc/nkube/config/is-master" ]]; then

@@ -4,10 +4,8 @@ Requires=kubelet.service
 After=kubelet.service
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=/usr/local/bin/nkube.sh
-Restart=on-failure
-RestartSec=5
 
 [Install]
 WantedBy=kubelet.service
