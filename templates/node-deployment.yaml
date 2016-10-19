@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "{{ template "fullname" . }}-node"
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: "{{ template "fullname" . }}-node"
+    spec:
+      containers:
+        - name: "{{ template "fullname" . }}-node"
+          image: maru/nkube
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: secret
+            mountPath: /etc/nkube/secret
+            readOnly: true
+          - name: config
+            mountPath: /etc/nkube/config
+            readOnly: true
+      volumes:
+        - name: secret
+          secret:
+            secretName: {{ template "fullname" . }}
+        - name: config
+          configMap:
+            name: {{ template "fullname" . }}
+            items:
+              - key: "cluster-id"
+                path: "cluster-id"

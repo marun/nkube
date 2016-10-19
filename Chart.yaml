@@ -1,0 +1,4 @@
+apiVersion: v1
+description: k8s on k8s with systemd, docker-in-docker and kubeadm
+name: nkube
+version: 0.1.0

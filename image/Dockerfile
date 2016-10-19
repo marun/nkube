@@ -1,0 +1,11 @@
+#
+# Image for configuring a nested Kubernetes cluster.
+#
+# The standard name for this image is maru/nestedkube
+#
+
+from maru/kubeadm
+
+COPY nkube.sh /usr/local/bin
+COPY nkube.service /etc/systemd/system/
+RUN systemctl enable nkube.service

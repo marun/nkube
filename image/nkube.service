@@ -1,0 +1,13 @@
+[Unit]
+Description=initialization of a nested Kubernetes cluster
+Requires=kubelet.service
+After=kubelet.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nkube.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=kubelet.service
