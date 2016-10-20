@@ -31,8 +31,15 @@ function init-master() {
   local dns_name="${cluster_id}.${namespace}.svc.cluster.local"
 
   # Initialize the cluster
+  # TODO ensure different network cidrs than the hosting cluster
   local kubeadm_token; kubeadm_token="$(get-kubeadm-token)"
-  kubeadm init --token "${kubeadm_token}" --service-dns-domain "${cluster_id}.local" --api-advertise-addresses "${pod_ip},${host_ip}" --api-external-dns-names "${dns_name}"
+  kubeadm init \
+          --token "${kubeadm_token}" \
+          --service-dns-domain "${cluster_id}.local" \
+          --service-cidr "10.27.0.0/16" \
+          --pod-network-cidr "172.27.0.0/16" \
+          --api-advertise-addresses "${pod_ip},${host_ip}" \
+          --api-external-dns-names "${dns_name}"
 
   ${kc} create secret generic "${cluster_id}-admin-conf" --from-file=/etc/kubernetes/admin.conf
 }
