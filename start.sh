@@ -81,7 +81,7 @@ function main() {
   # Rewrite the conf so it works from outside the cluster
   sed -i -e "s+\(server: https://\).*+\1${host_ip}:${port}+" "${kubeconfig}"
 
-  echo "Wrote kubeconfig for cluster ${release} to ${kubeconfig}"
+  echo "Wrote kubeconfig to ${kubeconfig}"
 
   local rc_file="${release}.rc"
   cat >"${rc_file}" <<EOF
@@ -90,7 +90,7 @@ alias nk='KUBECONFIG=${kubeconfig}'
 EOF
 
   echo ""
-  echo "Before invoking kubectl, make sure to source the nkube cluster's rc file to configure the bash environment:
+  echo "Before invoking kubectl, configure the bash environment by sourcing the cluster's rc file:
 
   $ . ${rc_file}
   $ nk kubectl get nodes
