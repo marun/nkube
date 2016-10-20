@@ -10,10 +10,28 @@ metadata:
 spec:
   ports:
   - name: kubernetes-api
-    port: 443
+    port: 6443
     targetPort: kubernetes-api
   - name: discovery
     port: 9898
     targetPort: discovery
   selector:
     app: "{{ template "fullname" . }}-master"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ template "fullname" . }}-api"
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  ports:
+  - name: kubernetes-api
+    port: 6443
+    targetPort: kubernetes-api
+  selector:
+    app: "{{ template "fullname" . }}-master"
+  type: NodePort

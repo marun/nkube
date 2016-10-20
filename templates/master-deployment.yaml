@@ -19,8 +19,8 @@ spec:
           image: maru/nkube
           imagePullPolicy: IfNotPresent
           ports:
-            - name: kubernetes
-              containerPort: 443
+            - name: kubernetes-api
+              containerPort: 6443
             - name: discovery
               containerPort: 9898
           securityContext:
