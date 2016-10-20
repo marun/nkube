@@ -20,7 +20,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: kubernetes-api
-              containerPort: 6443
+              containerPort: 443
             - name: discovery
               containerPort: 9898
           securityContext:

@@ -10,7 +10,7 @@ metadata:
 spec:
   ports:
   - name: kubernetes-api
-    port: 6443
+    port: 443
     targetPort: kubernetes-api
   - name: discovery
     port: 9898
@@ -30,7 +30,7 @@ metadata:
 spec:
   ports:
   - name: kubernetes-api
-    port: 6443
+    port: 443
     targetPort: kubernetes-api
   selector:
     app: "{{ template "fullname" . }}-master"
