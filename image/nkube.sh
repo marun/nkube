@@ -4,6 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+IMAGE_CACHE_PATH="/nkube-cache"
+
 # TODO modprobe overlay via a sidecar?
 # TODO Ensure volumes are cleaned up via a kubernetes job on the host?
 #   - Mount the docker socket into a sidecar of the node?
@@ -30,6 +32,8 @@ function init-master() {
   local pod_ip; pod_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.podIP }}')"
   local dns_name="${cluster_id}.${namespace}.svc.cluster.local"
 
+  load-images
+
   # Initialize the cluster
   # TODO ensure different network cidrs than the hosting cluster
   local kubeadm_token; kubeadm_token="$(get-kubeadm-token)"
@@ -42,6 +46,29 @@ function init-master() {
           --api-external-dns-names "${dns_name}"
 
   ${kc} create secret generic "${cluster_id}-admin-conf" --from-file=/etc/kubernetes/admin.conf
+
+  save-images
+}
+
+function save-images() {
+  if [[ ! -d "${IMAGE_CACHE_PATH}" ]]; then
+    return 0
+  fi
+  for image_id in $(docker images -q); do
+    local target_path="${IMAGE_CACHE_PATH}/${image_id}.tar"
+    if [[ ! -f "${target_path}" ]]; then
+      docker save "${image_id}" > "${target_path}"
+    fi
+  done
+}
+
+function load-images() {
+  if [[ ! -d "${IMAGE_CACHE_PATH}" ]]; then
+    return 0
+  fi
+  for image_tar in $(find "${IMAGE_CACHE_PATH}" -maxdepth 1 -type f -name '*.tar'); do
+    docker load -i "${image_tar}"
+  done
 }
 
 # TODO figure out how to compose the token in the template

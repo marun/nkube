@@ -32,6 +32,10 @@ spec:
           - name: config
             mountPath: /etc/nkube/config
             readOnly: true
+          {{- if .Values.baseCachePath }}
+          - name: cache
+            mountPath: /nkube-cache
+          {{- end }}
       volumes:
         - name: secret
           secret:
@@ -39,3 +43,8 @@ spec:
         - name: config
           configMap:
             name: {{ template "fullname" . }}
+        {{- if .Values.baseCachePath }}
+        - name: cache
+          hostpath:
+            path: {{ .Values.baseCachePath }}
+        {{- end }}
