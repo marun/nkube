@@ -8,5 +8,5 @@ metadata:
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
 data:
-  cluster-id: {{ template "fullname" . }}
+  cluster-id: "{{ .Release.Name }}"
   is-master: ""

@@ -6,15 +6,15 @@ set -o pipefail
 
 IMAGE_CACHE_PATH="/nkube-cache"
 
-# TODO modprobe overlay via a sidecar?
+# TODO modprobe ip6_tables (required for calico)
+# TODO modprobe overlay? or use vfs and avoid the need for volume cleanup?
 # TODO Ensure volumes are cleaned up via a kubernetes job on the host?
 #   - Mount the docker socket into a sidecar of the node?
 #   - Use a petset?
 # TODO add node decommissioning
 # TODO enable etcd persistence
 # TODO enable cluster config persistence (/etc/kubernetes on pv?)
-# TODO sync /etc/hosts with oc observe
-# TODO configure network plugin
+# TODO allow choice of network plugin
 function init-master() {
   if [[ -f "/etc/kubernetes/admin.conf" ]]; then
     echo "Already initialized"
@@ -30,7 +30,7 @@ function init-master() {
 
   local host_ip; host_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.hostIP }}')"
   local pod_ip; pod_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.podIP }}')"
-  local dns_name="${cluster_id}.${namespace}.svc.cluster.local"
+  local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
 
   load-images
 
@@ -41,13 +41,30 @@ function init-master() {
           --token "${kubeadm_token}" \
           --service-dns-domain "${cluster_id}.local" \
           --service-cidr "10.27.0.0/16" \
-          --pod-network-cidr "172.27.0.0/16" \
           --api-advertise-addresses "${pod_ip},${host_ip}" \
-          --api-external-dns-names "${dns_name}"
+          --api-external-dns-names "${dns_name}" \
+          --use-kubernetes-version "v1.5.0-alpha.2"
 
-  ${kc} create secret generic "${cluster_id}-admin-conf" --from-file=/etc/kubernetes/admin.conf
+  update-kubelet-conf "10.27.0.10" "${cluster_id}"
+
+  local config="/etc/kubernetes/admin.conf"
+
+  ${kc} create secret generic "${cluster_id}-nkube-admin-conf" --from-file="${config}"
+
+  # Configure networking
+  kubectl --kubeconfig="${config}" create -f /etc/nkube/calico.yaml
 
   save-images
+}
+
+function update-kubelet-conf() {
+  local cluster_dns=$1
+  local cluster_id=$2
+
+  sed -i -e 's+\(.*KUBELET_DNS_ARGS=\).*+\1--cluster-dns='"${cluster_dns}"' --cluster-domain='"${cluster_id}"'.local+' \
+      /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+  systemctl daemon-reload
+  systemctl restart kubelet
 }
 
 function save-images() {
@@ -88,12 +105,13 @@ function init-node() {
   local sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
   local namespace; namespace="$(cat ${sa_dir}/namespace)"
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
-  local dns_name="${cluster_id}.${namespace}.svc.cluster.local"
+  local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
   local ip_addr; ip_addr="$(getent hosts "${dns_name}" | awk '{print $1}')"
 
   while ! kubeadm join --token="${token}" "${ip_addr}"; do
     sleep 1
   done
+  update-kubelet-conf "10.27.0.10" "${cluster_id}"
 }
 
 if [[ -f "/etc/nkube/config/is-master" ]]; then
