@@ -52,8 +52,8 @@ function main() {
   # Capture and output to stdout
   exec 5>&1
   local output; output="$(helm install . ${args} | tee >(cat - >&5))"
-  local release; release="$(echo -e "${output}" | head -1)"
-  local namespace; namespace="$(echo -e "${output}" | grep Namespace | awk '{print $2}')"
+  local release; release="$(echo -e "${output}" | head -1 | awk '{print $2}' )"
+  local namespace; namespace="$(echo -e "${output}" | grep -i namespace | awk '{print $2}')"
   local kc="kubectl --namespace=${namespace}"
 
   local secret_name="${release}-nkube-admin-conf"
