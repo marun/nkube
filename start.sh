@@ -45,7 +45,11 @@ function does-secret-exist() {
 }
 
 function main() {
-  local args="${@}"
+  # Work around Darwin's ancient version of bash (~3.2.x)
+  local args=
+  if [[ $# -gt 0 ]]; then
+    args="${@}"
+  fi
 
   local start; start="$(date +%s)"
 
@@ -66,20 +70,20 @@ function main() {
   local runtime; runtime="$((end-start))"
   echo "Cluster init took ${runtime}s"
 
-  local kubeconfig; kubeconfig="$(pwd)/admin-${release}.conf"
-
-  ${kc} get secret "${secret_name}" -o yaml | \
-    grep '^  admin.conf' | \
-    sed -e 's+^  admin.conf: ++' | \
-    base64 -d > "${kubeconfig}"
-
   # TODO ensure the retrieved ip points to a node accessible outside the cluster and running kube-proxy
   local host_ip; host_ip="$(${kc} cluster-info | awk '/Kubernetes master/ {print $NF}' | sed -e 's+.*://\(.*\):.*+\1+')"
 
   local port; port="$(${kc} get svc "${release}-nkube-api" --template='{{ range .spec.ports }}{{ .nodePort }}{{ end }}')"
 
-  # Rewrite the conf so it works from outside the cluster
-  sed -i -e "s+\(server: https://\).*+\1${host_ip}:${port}+" "${kubeconfig}"
+  local kubeconfig; kubeconfig="$(pwd)/admin-${release}.conf"
+
+  ${kc} get secret "${secret_name}" -o yaml | \
+    grep '^  admin.conf' | \
+    sed -e 's+^  admin.conf: ++' | \
+    base64 --decode | \
+    # Rewrite the server url so it works from outside the cluster
+    sed -e "s+\(server: https://\).*+\1${host_ip}:${port}+" > \
+    "${kubeconfig}"
 
   echo "Wrote kubeconfig to ${kubeconfig}"
 
@@ -97,4 +101,10 @@ EOF
 "
 }
 
-main ${@}
+# Work around Darwin's ancient version of bash (~3.2.x)
+ARGS=
+if [[ $# -gt 0 ]]; then
+  ARGS="${@}"
+fi
+
+main ${ARGS}
