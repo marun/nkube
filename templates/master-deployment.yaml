@@ -45,6 +45,6 @@ spec:
             name: {{ template "fullname" . }}
         {{- if .Values.baseCachePath }}
         - name: cache
-          hostpath:
+          hostPath:
             path: {{ .Values.baseCachePath }}
         {{- end }}
