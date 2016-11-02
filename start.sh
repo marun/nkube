@@ -44,14 +44,21 @@ function does-secret-exist() {
   kubectl --namespace="${namespace}" get secret "${secret_name}" &> /dev/null
 }
 
+function dns-ready() {
+  local kubeconfig=$1
+
+  kubectl --kubeconfig="${kubeconfig}" --namespace=kube-system get pods --show-all \
+    | grep 'kube-dns' \
+    | awk '{print $2}' \
+    | grep '3/3' &> /dev/null
+}
+
 function main() {
   # Work around Darwin's ancient version of bash (~3.2.x)
   local args=
   if [[ $# -gt 0 ]]; then
     args="${@}"
   fi
-
-  local start; start="$(date +%s)"
 
   # Capture and output to stdout
   exec 5>&1
@@ -61,6 +68,8 @@ function main() {
   local kc="kubectl --namespace=${namespace}"
 
   local secret_name="${release}-nkube-admin-conf"
+
+  local start; start="$(date +%s)"
 
   local msg="cluster config to become available"
   local condition="does-secret-exist ${namespace} ${secret_name}"
@@ -98,7 +107,19 @@ EOF
 
   $ . ${rc_file}
   $ nk kubectl get nodes
+
 "
+
+  start="$(date +%s)"
+
+  local msg="cluster dns"
+  local condition="dns-ready ${kubeconfig}"
+  wait-for-condition "${msg}" "${condition}" 300
+
+  end="$(date +%s)"
+  runtime="$((end-start))"
+  echo ""
+  echo "Network init took ${runtime}s"
 }
 
 # Work around Darwin's ancient version of bash (~3.2.x)
