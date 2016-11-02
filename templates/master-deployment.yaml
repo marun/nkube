@@ -36,6 +36,10 @@ spec:
           - name: cache
             mountPath: /nkube-cache
           {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/usr/local/bin/nkube.sh"]
       volumes:
         - name: secret
           secret:

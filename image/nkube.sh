@@ -16,8 +16,11 @@ IMAGE_CACHE_PATH="/nkube-cache"
 # TODO enable cluster config persistence (/etc/kubernetes on pv?)
 # TODO allow choice of network plugin
 function init-master() {
+  local cache_path="${IMAGE_CACHE_PATH}/master"
+
   if [[ -f "/etc/kubernetes/admin.conf" ]]; then
     echo "Already initialized"
+    save-images "${cache_path}"
     return 0
   fi
 
@@ -32,7 +35,7 @@ function init-master() {
   local pod_ip; pod_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.podIP }}')"
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
 
-  load-images
+  load-images "${cache_path}"
 
   # Initialize the cluster
   # TODO ensure different network cidrs than the hosting cluster
@@ -54,7 +57,7 @@ function init-master() {
   # Configure networking
   kubectl --kubeconfig="${config}" create -f /etc/nkube/calico.yaml
 
-  save-images
+  save-images "${cache_path}"
 }
 
 function update-kubelet-conf() {
@@ -68,23 +71,32 @@ function update-kubelet-conf() {
 }
 
 function save-images() {
-  if [[ ! -d "${IMAGE_CACHE_PATH}" ]]; then
+  local target_path=$1
+
+  if [[ ! -d "$(dirname "${target_path}")" ]]; then
     return 0
   fi
+
+  echo "Saving images to ${target_path}"
+  mkdir -p "${target_path}"
   for image_id in $(docker images -q); do
-    local target_path="${IMAGE_CACHE_PATH}/${image_id}.tar"
-    if [[ ! -f "${target_path}" ]]; then
-      docker save "${image_id}" > "${target_path}"
+    local image_tar="${target_path}/${image_id}.tar"
+    if [[ ! -f "${image_tar}" ]]; then
+      docker save --output "${image_tar}" "${image_id}"
     fi
   done
 }
 
 function load-images() {
-  if [[ ! -d "${IMAGE_CACHE_PATH}" ]]; then
+  local target_path=$1
+
+  if [[ ! -d "${target_path}" ]]; then
     return 0
   fi
-  for image_tar in $(find "${IMAGE_CACHE_PATH}" -maxdepth 1 -type f -name '*.tar'); do
-    docker load -i "${image_tar}"
+
+  echo "Loading images from ${target_path}"
+  for image_tar in $(find "${target_path}" -maxdepth 1 -type f -name '*.tar'); do
+    docker load --input "${image_tar}"
   done
 }
 
@@ -96,8 +108,10 @@ function get-kubeadm-token() {
 }
 
 function init-node() {
+  local cache_path="${IMAGE_CACHE_PATH}/node"
   if [[ -f "/etc/kubernetes/kubelet.conf" ]]; then
     echo "Already initialized"
+    save-images "${cache_path}"
     return 0
   fi
 
@@ -107,6 +121,8 @@ function init-node() {
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
   local ip_addr; ip_addr="$(getent hosts "${dns_name}" | awk '{print $1}')"
+
+  load-images "${cache_path}"
 
   while ! kubeadm join --token="${token}" "${ip_addr}"; do
     sleep 1

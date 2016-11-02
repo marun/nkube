@@ -27,6 +27,14 @@ spec:
           - name: config
             mountPath: /etc/nkube/config
             readOnly: true
+          {{- if .Values.baseCachePath }}
+          - name: cache
+            mountPath: /nkube-cache
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/usr/local/bin/nkube.sh"]
       volumes:
         - name: secret
           secret:
@@ -37,3 +45,8 @@ spec:
             items:
               - key: "cluster-id"
                 path: "cluster-id"
+        {{- if .Values.baseCachePath }}
+        - name: cache
+          hostPath:
+            path: {{ .Values.baseCachePath }}
+        {{- end }}
