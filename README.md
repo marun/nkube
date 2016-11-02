@@ -34,7 +34,7 @@ helm init
 
 ```
 minikube ssh
-modprobe ip6_tables
+sudo modprobe ip6_tables
 exit
 ```
 
@@ -53,24 +53,29 @@ exit
 . [cluster-id].rc
 ```
 
-- The rc file crates the ``nk`` alias to allow easy access to both the
-  hosting and nested clusters:
+- The rc file creates the ``nk`` alias to allow easy access to both
+  the hosting and nested clusters:
 
 ```
 kubectl get nodes     # Hosting cluster
 nk kubectl get nodes  # Nested cluster
 ```
 
+- More than one nested cluster can be deployed at once.  Switching
+  between nested clusters is accomplished by sourcing the rc file of
+  the desired cluster.
+
 - Since the cluster is deployed with helm, helm commands can be used
   to manage the cluster (e.g ``helm delete [cluster id]`` removes the
   cluster).
 
-- The number of nodes can be scaled by setting the replica count of
-  the node deployment.
-
 - ssh access to the nodes of the cluster is not supported.  Instead,
   use ``kubectl exec`` to gain shell access to the master and node
   pods.
+
+- The number of nodes can be scaled by setting the replica count of
+  the node deployment.  The number of nodes is limited only by the
+  capacity of the hosting cluster.
 
 ## Warnings
 
