@@ -43,7 +43,7 @@ exit
   depending on the speed of the host and its network connection:
 
 ```
-./start.sh
+./start.sh [helm install args]
 ```
 
 - Once ``start.sh`` has finished, the cluster's rc file can be sourced to
