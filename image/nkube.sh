@@ -44,7 +44,10 @@ function init-master() {
   # Initialize the cluster
   # TODO ensure different network cidrs than the hosting cluster
   local kubeadm_token; kubeadm_token="$(get-kubeadm-token)"
+  # TODO skip preflight checks for now because centos doesn't have the
+  # 'configs' module available
   kubeadm init \
+          --skip-preflight-checks \
           --token "${kubeadm_token}" \
           --service-dns-domain "${cluster_id}.local" \
           --service-cidr "10.27.0.0/16" \
@@ -128,7 +131,9 @@ function init-node() {
 
   load-images "${cache_path}"
 
-  while ! kubeadm join --token="${token}" "${ip_addr}"; do
+  # TODO skip preflight checks for now because centos doesn't have the
+  # 'configs' module available
+  while ! kubeadm join --skip-preflight-checks --token="${token}" "${ip_addr}"; do
     sleep 1
   done
   update-kubelet-conf "10.27.0.10" "${cluster_id}"
