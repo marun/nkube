@@ -1,7 +1,7 @@
 #
 # Image for configuring a nested Kubernetes cluster.
 #
-# The standard name for this image is maru/nestedkube
+# The standard name for this image is maru/nkube
 #
 
 from maru/kubeadm
