@@ -27,7 +27,8 @@ function init-master() {
   local sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
   local token; token="$(cat ${sa_dir}/token)"
   local namespace; namespace="$(cat ${sa_dir}/namespace)"
-  local kc; kc="kubectl --certificate-authority=${sa_dir}/ca.crt --token=${token} --server https://kubernetes --namespace=${namespace}"
+  local api_host="https://kubernetes.default.svc.cluster.local"
+  local kc; kc="kubectl --certificate-authority=${sa_dir}/ca.crt --token=${token} --server ${api_host} --namespace=${namespace}"
 
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
 
