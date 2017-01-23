@@ -70,8 +70,7 @@ function update-kubelet-conf() {
   local cluster_dns=$1
   local cluster_id=$2
 
-  sed -i -e 's+\(.*KUBELET_DNS_ARGS=\).*+\1--cluster-dns='"${cluster_dns}"' --cluster-domain='"${cluster_id}"'.local+' \
-      /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+  sed -i -e 's+\(.*KUBELET_DNS_ARGS=\).*+\1--cluster-dns='"${cluster_dns}"' --cluster-domain='"${cluster_id}"'.local"+' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
   systemctl daemon-reload
   systemctl restart kubelet
 }
