@@ -50,7 +50,7 @@ function dns-ready() {
   kubectl --kubeconfig="${kubeconfig}" --namespace=kube-system get pods --show-all \
     | grep 'kube-dns' \
     | awk '{print $2}' \
-    | grep '3/3' &> /dev/null
+    | grep '4/4' &> /dev/null
 }
 
 function main() {
