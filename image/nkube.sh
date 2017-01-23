@@ -52,8 +52,7 @@ function init-master() {
           --service-dns-domain "${cluster_id}.local" \
           --service-cidr "10.27.0.0/16" \
           --api-advertise-addresses "${pod_ip},${host_ip}" \
-          --api-external-dns-names "${dns_name}" \
-          --use-kubernetes-version "v1.5.0-alpha.2"
+          --api-external-dns-names "${dns_name}"
 
   update-kubelet-conf "10.27.0.10" "${cluster_id}"
 
