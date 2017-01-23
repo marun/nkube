@@ -33,7 +33,10 @@ function init-master() {
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
 
   local host_ip; host_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.hostIP }}')"
-  local pod_ip; pod_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.podIP }}')"
+
+  # Can't retrieve the pod ip from env due to running under systemd.
+  local pod_ip; pod_ip="$(ifconfig eth0 | grep 'inet ' | awk '{print $2}')"
+
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
 
   load-images "${cache_path}"
