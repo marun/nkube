@@ -45,12 +45,33 @@ function does-secret-exist() {
 }
 
 function dns-ready() {
-  local kubeconfig=$1
+  local cluster_id=$1
 
-  kubectl --kubeconfig="${kubeconfig}" --namespace=kube-system get pods --show-all \
+  kubectl --context="${cluster_id}" --namespace=kube-system get pods --show-all \
     | grep 'kube-dns' \
     | awk '{print $2}' \
     | grep '4/4' &> /dev/null
+}
+
+function update-local-config() {
+  local cluster_id=$1
+  local host_ip=$2
+  local port=$3
+  local kubeconfig=$4
+
+  local cert; cert="$(grep 'certificate-authority-data' <<< "${kubeconfig}" | head -n 1 | awk '{print $2}')"
+  # The cert and key will appear twice in the file, but they will be the same so it is safe to pick the first one.
+  local client_cert; client_cert="$(grep 'client-certificate-data' <<< "${kubeconfig}" | head -n 1 | awk '{print $2}')"
+  local key; key="$(grep 'client-key-data' <<< "${kubeconfig}" | head -n 1 | awk '{print $2}')"
+  local server;server="$(grep 'server' <<< "${kubeconfig}" | awk '{print $2}')"
+  # Rewrite the server url so it works from outside the cluster
+  server="$(sed -e "s+\(https://\).*+\1${host_ip}:${port}+" <<< "${server}")"
+
+  kubectl config set-cluster "${cluster_id}" --server="${server}" > /dev/null
+  kubectl config set clusters."${cluster_id}".certificate-authority-data "${cert}" > /dev/null
+  kubectl config set users."${cluster_id}".client-certificate-data "${client_cert}" > /dev/null
+  kubectl config set users."${cluster_id}".client-key-data "${key}" > /dev/null
+  kubectl config set-context "${cluster_id}" --cluster="${cluster_id}" --user="${cluster_id}" > /dev/null
 }
 
 function main() {
@@ -84,36 +105,19 @@ function main() {
 
   local port; port="$(${kc} get svc "${release}-nkube-api" --template='{{ range .spec.ports }}{{ .nodePort }}{{ end }}')"
 
-  local kubeconfig; kubeconfig="$(pwd)/admin-${release}.conf"
+  local kubeconfig; kubeconfig="$(${kc} get secret "${secret_name}" -o yaml | \
+      grep '^  admin.conf' | sed -e 's+^  admin.conf: ++' | base64 --decode)"
 
-  ${kc} get secret "${secret_name}" -o yaml | \
-    grep '^  admin.conf' | \
-    sed -e 's+^  admin.conf: ++' | \
-    base64 --decode | \
-    # Rewrite the server url so it works from outside the cluster
-    sed -e "s+\(server: https://\).*+\1${host_ip}:${port}+" > \
-    "${kubeconfig}"
-
-  echo "Wrote kubeconfig to ${kubeconfig}"
-
-  local rc_file="${release}.rc"
-  cat >"${rc_file}" <<EOF
-export NK_KUBECONFIG=${kubeconfig}
-alias nk='KUBECONFIG=${kubeconfig}'
-EOF
+  update-local-config "${release}" "${host_ip}" "${port}" "${kubeconfig}"
 
   echo ""
-  echo "Before invoking kubectl, configure the bash environment by sourcing the cluster's rc file:
-
-  $ . ${rc_file}
-  $ nk kubectl get nodes
-
-"
+  echo "To access the cluster, use --context=${release} with kubectl"
+  echo ""
 
   start="$(date +%s)"
 
   local msg="cluster dns"
-  local condition="dns-ready ${kubeconfig}"
+  local condition="dns-ready ${release}"
   wait-for-condition "${msg}" "${condition}" 300
 
   end="$(date +%s)"
