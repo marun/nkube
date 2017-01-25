@@ -73,7 +73,7 @@ function update-kubelet-conf() {
 
   sed -i -e 's+\(.*KUBELET_DNS_ARGS=\).*+\1--cluster-dns='"${cluster_dns}"' --cluster-domain='"${cluster_id}"'.local"+' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
   systemctl daemon-reload
-  systemctl restart kubelet
+  # kubeadm will restart kubelet as part of init/join
 }
 
 function save-images() {
