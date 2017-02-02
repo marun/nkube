@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# This script depends on:
+# This script depends on binaries that can be sourced from an
+# openshift release or built from source:
 #
-# - oc and oadm from openshift-origin-client-tools
+# - oc from openshift-origin-client-tools
+# - oadm from openshift-origin-server
 #
-#   https://github.com/openshift/origin/releases
-#
-# - helm
-#
-#   https://github.com/kubernetes/helm#install
+#  https://github.com/openshift/origin/releases
 #
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
+# PROJECT should be set to the project that helm will be creating
+# charts in.  'myproject' is the default created by 'oc cluster up'.
 PROJECT=myproject
 
 # Create new cluster
@@ -23,14 +23,12 @@ oc cluster up
 # Login as administrator
 oc login -u system:admin
 
-# Privilege the kube-system service account to allow helm to work
+# Helm needs to be privileged in both the kube-system and target
+# namespaces to work.  Future releases of helm will support supplying
+# a --helm-namespace flag to init so that permissions will only be
+# required for the target namespace.
+oadm policy add-scc-to-user privileged system:serviceaccount:kube-system:default
+oadm policy add-scc-to-user anyuid system:serviceaccount:kube-system:default
 oadm policy add-cluster-role-to-user cluster-admin system:serviceaccount:kube-system:default
-
-# Install helm in the project
-helm init
-
-# Enable privileged pods in the namespace that helm will be using (i.e. myproject)
 oadm policy add-scc-to-user privileged system:serviceaccount:"${PROJECT}":default
-
-# Ensure the project's service account has sufficient permissions
 oadm policy add-role-to-user admin system:serviceaccount:"${PROJECT}":default
