@@ -68,3 +68,6 @@ fi
 ${KC} scale deploy "${CONTROLLER_MANAGER}" --replicas=1
 
 
+## Join the host cluster to the federation
+OS_CONTEXT="$(oc config current-context)"
+kubefed join openshift --context="${FEDERATION_NAME}" --host-cluster-context="${OS_CONTEXT}" --cluster-context="${OS_CONTEXT}"
