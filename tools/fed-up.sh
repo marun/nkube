@@ -18,6 +18,7 @@ set -o pipefail
 FEDERATION_NAMESPACE="${FEDERATION_NAMESPACE:-federation-system}"
 FEDERATION_NAME="${FEDERATION_NAME:-echelon}"
 HYPERKUBE_PATH="${HYPERKUBE_PATH:-/home/dev/src/k8s/src/k8s.io/kubernetes/_output/bin/hyperkube}"
+FCP_IMAGE="${FCP_IMAGE:-gcr.io/google-containers/fcp-amd64:1.0}"
 
 KC="kubectl --namespace=${FEDERATION_NAMESPACE}"
 CONTROLLER_MANAGER="${FEDERATION_NAME}-controller-manager"
@@ -39,8 +40,8 @@ fi
 ## Deploy!
 kubefed init "${FEDERATION_NAME}" --dns-provider=google-clouddns \
         --etcd-persistent-storage=false \
-        --federation-system-namespace="${FEDERATION_NAMESPACE}"
-
+        --federation-system-namespace="${FEDERATION_NAMESPACE}" \
+        --image="${FCP_IMAGE}"
 
 ## Post-init fixup
 
