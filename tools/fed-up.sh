@@ -68,8 +68,11 @@ fi
 # Scale the deployment back up
 ${KC} scale deploy "${CONTROLLER_MANAGER}" --replicas=1
 
+## Wait the federation api to become available
+while [ "$(${KC} get --context=echelon --raw=/healthz)" != "ok" ]; do
+  sleep 1
+done
 
-# TODO figure out why joining in the script vs afterwards causes the controller manager to wedge
 ## Join the host cluster to the federation
-#OS_CONTEXT="$(oc config current-context)"
-#kubefed join openshift --context="${FEDERATION_NAME}" --host-cluster-context="${OS_CONTEXT}" --cluster-context="${OS_CONTEXT}"
+OS_CONTEXT="$(oc config current-context)"
+kubefed join openshift --context="${FEDERATION_NAME}" --host-cluster-context="${OS_CONTEXT}" --cluster-context="${OS_CONTEXT}"
