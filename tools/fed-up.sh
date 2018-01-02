@@ -39,7 +39,6 @@ fi
 
 ## Deploy!
 kubefed init "${FEDERATION_NAME}" --dns-provider=google-clouddns \
-        --etcd-persistent-storage=false \
         --federation-system-namespace="${FEDERATION_NAMESPACE}" \
         --image="${FCP_IMAGE}"
 
