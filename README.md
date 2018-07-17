@@ -40,16 +40,16 @@ exit
 
 - From the root of a clone of this repo, start a new nested cluster
   with the calico plugin.  Deployment is likely to take 3-5m,
-  depending on the speed of the host and its network connection:
-
-```
-./start.sh [helm install args]
-```
+  depending on the speed of the host and its network connection.
 
   If you see the error `no available release name found`, it may be
   necessary to
   [grant](https://github.com/kubernetes/helm/issues/3130#issuecomment-372931407)
   cluster admin privileges to the deployed helm tiller.
+
+```
+./start.sh [helm install args]
+```
 
 - Once ``start.sh`` has finished, a context will have been added that
   will allow access to the cluster:
