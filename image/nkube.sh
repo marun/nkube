@@ -34,9 +34,6 @@ function init-master() {
 
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
 
-  # Configure kubelet dns before any pods are launched by init
-  update-kubelet-conf "10.27.0.10" "${cluster_id}"
-
   # Initialize the cluster
   # TODO ensure different network cidrs than the hosting cluster
   local kubeadm_token; kubeadm_token="$(get-kubeadm-token)"
@@ -46,9 +43,9 @@ function init-master() {
           --skip-preflight-checks \
           --token "${kubeadm_token}" \
           --service-dns-domain "${cluster_id}.local" \
-          --service-cidr "10.27.0.0/16" \
           --api-advertise-addresses "${pod_ip},${host_ip}" \
-          --api-external-dns-names "${dns_name}"
+          --api-external-dns-names "${dns_name}" \
+          --pod-network-cidr=192.168.0.0/16
 
   local config="/etc/kubernetes/admin.conf"
 
@@ -56,15 +53,6 @@ function init-master() {
 
   # Configure networking
   kubectl --kubeconfig="${config}" create -f /etc/nkube/calico.yaml
-}
-
-function update-kubelet-conf() {
-  local cluster_dns=$1
-  local cluster_id=$2
-
-  sed -i -e 's+\(.*KUBELET_DNS_ARGS=\).*+\1--cluster-dns='"${cluster_dns}"' --cluster-domain='"${cluster_id}"'.local"+' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-  systemctl daemon-reload
-  # kubeadm will restart kubelet as part of init/join
 }
 
 # TODO figure out how to compose the token in the template
@@ -86,8 +74,6 @@ function init-node() {
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
   local ip_addr; ip_addr="$(getent hosts "${dns_name}" | awk '{print $1}')"
-
-  update-kubelet-conf "10.27.0.10" "${cluster_id}"
 
   # TODO skip preflight checks for now because centos doesn't have the
   # 'configs' module available
