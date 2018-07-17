@@ -4,8 +4,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-IMAGE_CACHE_PATH="/nkube-cache"
-
 # TODO modprobe ip6_tables (required for calico)
 # TODO modprobe overlay? or use vfs and avoid the need for volume cleanup?
 # TODO Ensure volumes are cleaned up via a kubernetes job on the host?
@@ -16,11 +14,8 @@ IMAGE_CACHE_PATH="/nkube-cache"
 # TODO enable cluster config persistence (/etc/kubernetes on pv?)
 # TODO allow choice of network plugin
 function init-master() {
-  local cache_path="${IMAGE_CACHE_PATH}/master"
-
   if [[ -f "/etc/kubernetes/admin.conf" ]]; then
     echo "Already initialized"
-    save-images "${cache_path}"
     return 0
   fi
 
@@ -38,8 +33,6 @@ function init-master() {
   local pod_ip; pod_ip="$(ifconfig eth0 | grep 'inet ' | awk '{print $2}')"
 
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
-
-  load-images "${cache_path}"
 
   # Configure kubelet dns before any pods are launched by init
   update-kubelet-conf "10.27.0.10" "${cluster_id}"
@@ -63,8 +56,6 @@ function init-master() {
 
   # Configure networking
   kubectl --kubeconfig="${config}" create -f /etc/nkube/calico.yaml
-
-  save-images "${cache_path}"
 }
 
 function update-kubelet-conf() {
@@ -76,36 +67,6 @@ function update-kubelet-conf() {
   # kubeadm will restart kubelet as part of init/join
 }
 
-function save-images() {
-  local target_path=$1
-
-  if [[ ! -d "$(dirname "${target_path}")" ]]; then
-    return 0
-  fi
-
-  echo "Saving images to ${target_path}"
-  mkdir -p "${target_path}"
-  for image_id in $(docker images -q); do
-    local image_tar="${target_path}/${image_id}.tar"
-    if [[ ! -f "${image_tar}" ]]; then
-      docker save --output "${image_tar}" "${image_id}"
-    fi
-  done
-}
-
-function load-images() {
-  local target_path=$1
-
-  if [[ ! -d "${target_path}" ]]; then
-    return 0
-  fi
-
-  echo "Loading images from ${target_path}"
-  for image_tar in $(find "${target_path}" -maxdepth 1 -type f -name '*.tar'); do
-    docker load --input "${image_tar}"
-  done
-}
-
 # TODO figure out how to compose the token in the template
 function get-kubeadm-token() {
   local token1; token1="$(cat /etc/nkube/secret/token1)"
@@ -114,10 +75,8 @@ function get-kubeadm-token() {
 }
 
 function init-node() {
-  local cache_path="${IMAGE_CACHE_PATH}/node"
   if [[ -f "/etc/kubernetes/kubelet.conf" ]]; then
     echo "Already initialized"
-    save-images "${cache_path}"
     return 0
   fi
 
@@ -127,8 +86,6 @@ function init-node() {
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
   local ip_addr; ip_addr="$(getent hosts "${dns_name}" | awk '{print $1}')"
-
-  load-images "${cache_path}"
 
   update-kubelet-conf "10.27.0.10" "${cluster_id}"
 
