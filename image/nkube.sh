@@ -30,6 +30,9 @@ function init-master() {
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
 
   local host_ip; host_ip="$(${kc} get pod "$(hostname)" --template '{{ .status.hostIP }}')"
+  # Set the host ip to the known external host name, similar to API_HOSTNAME with hack/local-cluster-up.sh
+  # TODO make this configurable, maybe it still works with minikube and clusters on cloud providers?
+  host_ip="172.17.0.1"
 
   # Can't retrieve the pod ip from env due to running under systemd.
   local pod_ip; pod_ip="$(ifconfig eth0 | grep 'inet ' | awk '{print $2}')"
