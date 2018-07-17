@@ -46,6 +46,11 @@ exit
 ./start.sh [helm install args]
 ```
 
+  If you see the error `no available release name found`, it may be
+  necessary to
+  [grant](https://github.com/kubernetes/helm/issues/3130#issuecomment-372931407)
+  cluster admin privileges to the deployed helm tiller.
+
 - Once ``start.sh`` has finished, a context will have been added that
   will allow access to the cluster:
 

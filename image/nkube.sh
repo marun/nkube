@@ -19,10 +19,12 @@ function init-master() {
     return 0
   fi
 
+  # Need to compose the kubectl command manually because systemd will
+  # not pass through the env vars set by the kubelet.
   local sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
   local token; token="$(cat ${sa_dir}/token)"
   local namespace; namespace="$(cat ${sa_dir}/namespace)"
-  local api_host="https://kubernetes.default.svc.cluster.local"
+  local api_host="https://kubernetes.default.svc"
   local kc; kc="kubectl --certificate-authority=${sa_dir}/ca.crt --token=${token} --server ${api_host} --namespace=${namespace}"
 
   local cluster_id; cluster_id="$(cat /etc/nkube/config/cluster-id)"
@@ -34,18 +36,22 @@ function init-master() {
 
   local dns_name="${cluster_id}-nkube.${namespace}.svc.cluster.local"
 
+  # Ensure the kubelet will be compatible with running in a container.
+  echo 'KUBELET_EXTRA_ARGS=--cgroups-per-qos=false --enforce-node-allocatable= --fail-swap-on=false --v=4' > /etc/sysconfig/kubelet
+
+  # Cache images
+  kubeadm config images pull
+
   # Initialize the cluster
   # TODO ensure different network cidrs than the hosting cluster
   local kubeadm_token; kubeadm_token="$(get-kubeadm-token)"
-  # TODO skip preflight checks for now because centos doesn't have the
-  # 'configs' module available
   kubeadm init \
-          --skip-preflight-checks \
+          --ignore-preflight-errors "all" \
           --token "${kubeadm_token}" \
           --service-dns-domain "${cluster_id}.local" \
-          --api-advertise-addresses "${pod_ip},${host_ip}" \
-          --api-external-dns-names "${dns_name}" \
-          --pod-network-cidr=192.168.0.0/16
+          --apiserver-advertise-address "${pod_ip}" \
+          --apiserver-cert-extra-sans "${dns_name},${host_ip}" \
+          --pod-network-cidr "192.168.0.0/16"
 
   local config="/etc/kubernetes/admin.conf"
 
@@ -57,8 +63,11 @@ function init-master() {
 
 # TODO figure out how to compose the token in the template
 function get-kubeadm-token() {
-  local token1; token1="$(cat /etc/nkube/secret/token1)"
-  local token2; token2="$(cat /etc/nkube/secret/token2)"
+  # Recent versions of kubeadm require a token with only lower-cased
+  # letters, but helm's randomly generated alphanumeric may include
+  # upper-case characters.  Fix with sed.
+  local token1; token1="$(cat /etc/nkube/secret/token1 | sed -e 's/\(.*\)/\L\1/')"
+  local token2; token2="$(cat /etc/nkube/secret/token2 | sed -e 's/\(.*\)/\L\1/')"
   echo "${token1}.${token2}"
 }
 
@@ -67,6 +76,9 @@ function init-node() {
     echo "Already initialized"
     return 0
   fi
+
+  # Cache images
+  kubeadm config images pull
 
   local token; token="$(get-kubeadm-token)"
   local sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
@@ -77,7 +89,7 @@ function init-node() {
 
   # TODO skip preflight checks for now because centos doesn't have the
   # 'configs' module available
-  while ! kubeadm join --skip-preflight-checks --token="${token}" "${ip_addr}"; do
+  while ! kubeadm join --ignore-preflight-errors=all --token="${token}" "${ip_addr}"; do
     sleep 1
   done
 }

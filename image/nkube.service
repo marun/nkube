@@ -1,6 +1,6 @@
 [Unit]
 Description=initialization of a nested Kubernetes cluster
-Requires=kubelet.service
+Wants=kubelet.service
 After=kubelet.service
 
 [Service]
