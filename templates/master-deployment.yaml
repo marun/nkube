@@ -21,8 +21,6 @@ spec:
           ports:
             - name: kubernetes-api
               containerPort: 6443
-            - name: discovery
-              containerPort: 9898
           securityContext:
             privileged: true
           volumeMounts:

@@ -47,10 +47,10 @@ function does-secret-exist() {
 function dns-ready() {
   local cluster_id=$1
 
-  kubectl --context="${cluster_id}" --namespace=kube-system get pods --show-all \
-    | grep 'kube-dns' \
+  kubectl --context="${cluster_id}" --namespace=kube-system get pods 2>&1 \
+    | grep 'coredns' \
     | awk '{print $2}' \
-    | grep '4/4' &> /dev/null
+    | grep '1/1' &> /dev/null
 }
 
 function update-local-config() {
