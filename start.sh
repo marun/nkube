@@ -121,6 +121,9 @@ function main() {
   local condition="dns-ready ${release}"
   wait-for-condition "${msg}" "${condition}" 300
 
+  echo "Initializing helm"
+  helm init --kube-context=${release}
+
   end="$(date +%s)"
   runtime="$((end-start))"
   echo ""

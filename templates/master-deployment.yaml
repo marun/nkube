@@ -1,3 +1,171 @@
+{{ if eq .Values.mode "devcloud" }}
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-master-cni-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/master/cni"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-master-cni-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-master-data-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/master/data"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-master-data-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-master-etcd-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/master/etcd"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-master-etcd-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-master-k8s-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/master/kubernetes"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-master-k8s-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-master-kubelet-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/master/kubelet"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-master-kubelet-vol-claim"
+
+---
+{{ end }}
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-master-cni-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-master-etcd-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-master-kubelet-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-master-k8s-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-master-data-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -16,7 +184,7 @@ spec:
     spec:
       containers:
         - name: "{{ template "fullname" . }}-master"
-          image: maru/nkube
+          image: maglev/nkube:minikube
           imagePullPolicy: IfNotPresent
           ports:
             - name: kubernetes-api
@@ -34,7 +202,32 @@ spec:
           - name: cache
             mountPath: /nkube-cache
           {{- end }}
+          - name: etcdvolume
+            mountPath: /var/lib/etcd
+          - name: k8svolume
+            mountPath: /etc/kubernetes
+          - name: kubeletvolume
+            mountPath: /var/lib/kubelet
+          - name: cnivolume
+            mountPath: /etc/cni
+          - name: datavolume
+            mountPath: /data
       volumes:
+        - name: kubeletvolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-master-kubelet-vol-claim"
+        - name: k8svolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-master-k8s-vol-claim"
+        - name: etcdvolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-master-etcd-vol-claim"
+        - name: cnivolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-master-cni-vol-claim"
+        - name: datavolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-master-data-vol-claim"
         - name: secret
           secret:
             secretName: {{ template "fullname" . }}

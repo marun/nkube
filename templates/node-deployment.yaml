@@ -1,3 +1,138 @@
+{{ if eq .Values.mode "devcloud" }}
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-node-cni-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/node/cni"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-node-cni-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-node-data-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/node/data"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-node-data-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-node-k8s-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/node/kubernetes"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-node-k8s-vol-claim"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: "{{ .Release.Namespace }}-node-kubelet-vol"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/data/clusters/{{ .Release.Namespace }}/node/kubelet"
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: "{{ .Release.Namespace }}"
+    name: "{{ .Release.Namespace }}-node-kubelet-vol-claim"
+
+---
+{{ end }}
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-node-cni-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-node-kubelet-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-node-k8s-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Namespace }}-node-data-vol-claim"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -16,7 +151,7 @@ spec:
     spec:
       containers:
         - name: "{{ template "fullname" . }}-node"
-          image: maru/nkube
+          image: maglev/nkube:minikube
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -31,7 +166,27 @@ spec:
           - name: cache
             mountPath: /nkube-cache
           {{- end }}
+          - name: k8svolume
+            mountPath: /etc/kubernetes
+          - name: kubeletvolume
+            mountPath: /var/lib/kubelet
+          - name: cnivolume
+            mountPath: /etc/cni
+          - name: datavolume
+            mountPath: /data
       volumes:
+        - name: kubeletvolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-node-kubelet-vol-claim"
+        - name: k8svolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-node-k8s-vol-claim"
+        - name: cnivolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-node-cni-vol-claim"
+        - name: datavolume
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Namespace }}-node-data-vol-claim"
         - name: secret
           secret:
             secretName: {{ template "fullname" . }}
