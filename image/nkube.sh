@@ -16,6 +16,7 @@ set -o pipefail
 function init-master() {
   if [[ -f "/etc/kubernetes/admin.conf" ]]; then
     echo "Already initialized"
+    cat /var/lib/kubelet/kubelet.sysconfig > /etc/sysconfig/kubelet
     return 0
   fi
 
@@ -44,10 +45,12 @@ function init-master() {
   kubeadm init \
           --ignore-preflight-errors "all" \
           --token "${kubeadm_token}" \
-          --service-dns-domain "${cluster_id}.local" \
           --apiserver-advertise-address "${pod_ip}" \
-          --apiserver-cert-extra-sans "${dns_name},${host_ip}" \
+          --apiserver-cert-extra-sans "${dns_name},${host_ip},192.168.99.100" \
           --pod-network-cidr "192.168.0.0/16"
+          #--service-dns-domain "${cluster_id}.local" \
+
+  cp /etc/sysconfig/kubelet /var/lib/kubelet/kubelet.sysconfig
 
   local config="/etc/kubernetes/admin.conf"
 
@@ -78,6 +81,7 @@ function get-kubeadm-token() {
 function init-node() {
   if [[ -f "/etc/kubernetes/kubelet.conf" ]]; then
     echo "Already initialized"
+    cat /var/lib/kubelet/kubelet.sysconfig > /etc/sysconfig/kubelet
     return 0
   fi
 
@@ -96,7 +100,11 @@ function init-node() {
   while ! ${join_cmd}; do
     sleep 1
   done
+  cp /etc/sysconfig/kubelet /var/lib/kubelet/kubelet.sysconfig
 }
+
+echo "Updating /etc/resolv.conf for minikube"
+echo "nameserver 10.0.2.3" >> /etc/resolv.conf
 
 if [[ -f "/etc/nkube/config/is-master" ]]; then
   init-master
